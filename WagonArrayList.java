@@ -3,6 +3,8 @@ package Lab7;
 import Lab6.Wagon;
 
 import java.util.*;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
 
 public class WagonArrayList implements List {
 
@@ -11,14 +13,14 @@ public class WagonArrayList implements List {
     private int size;
 
     public WagonArrayList(){
-        wagons = new Wagon[INITIAL_CAPACITY];
+        this.wagons = new Wagon[INITIAL_CAPACITY];
     }
     public WagonArrayList(Wagon wagon){
         this();
         add(wagon);
     }
     public WagonArrayList(Collection<? extends Wagon> collection){
-        wagons = new Wagon[collection.size()];
+        wagons = new Wagon[INITIAL_CAPACITY];
         addAll(collection);
     }
     @Override
@@ -33,17 +35,19 @@ public class WagonArrayList implements List {
 
     @Override
     public boolean contains(Object o) {
-        for (Object o1 : wagons) {
-            if (o.equals(o1)) {
+        //WagonArrayList();
+        for (Object w : WagonArrayList.this) {
+            if (o.equals(w)) {
                 return true;
             }
         }
         return false;
     }
+    public List getAll(){return Arrays.stream(wagons).toList();}
 
     @Override
     public Iterator iterator() {
-        return null;
+        return new WagonListIterator();
     }
 
     @Override
@@ -53,7 +57,7 @@ public class WagonArrayList implements List {
 
     @Override
     public boolean add(Object w) {
-        if(w instanceof Wagon){
+        if(w instanceof Wagon && contains(w)==false){
             resizeIfNeeded();
             wagons[size] = (Wagon)w;
             size++;
@@ -79,15 +83,19 @@ public class WagonArrayList implements List {
 
     @Override
     public boolean addAll(Collection c) {
+        if(c.size()==0){return true;}
+        if(containsAll(c)){
+            return false;
+        }
         int init_wagons_size = size;
         for (int i = 0; i < c.size(); i++) {
             resizeIfNeeded();
             if(c.toArray()[i] instanceof Wagon){
-            wagons[init_wagons_size+i] = (Wagon)c.toArray()[i];
-            size++;
+                wagons[init_wagons_size+i] = (Wagon)c.toArray()[i];
+                size++;
             }
         }
-        return false;
+        return true;
     }
 
     @Override
@@ -162,36 +170,153 @@ public class WagonArrayList implements List {
 
     @Override
     public ListIterator listIterator() {
-        return null;
+        return new WagonListIterator(0);
     }
 
     @Override
     public ListIterator listIterator(int index) {
-        return null;
+        return new WagonListIterator(index);
+    }
+
+    private class WagonListIterator implements ListIterator<Wagon> {
+        private int currentIndex;
+        private int lastReturnedIndex = -1;
+        public WagonListIterator() {
+            this.currentIndex = 0;
+        }
+        public WagonListIterator(int index) {
+            if (index < 0 || index > WagonArrayList.this.size()) {
+                throw new IndexOutOfBoundsException("Invalid index");
+            }
+            this.currentIndex = index;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return currentIndex < WagonArrayList.this.size();
+        }
+
+        @Override
+        public Wagon next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            lastReturnedIndex = currentIndex;
+            return (Wagon)get(currentIndex++);
+        }
+
+        @Override
+        public boolean hasPrevious() {
+            return currentIndex > 0;
+        }
+
+        @Override
+        public Wagon previous() {
+            if (!hasPrevious()) {
+                throw new NoSuchElementException();
+            }
+            lastReturnedIndex = --currentIndex;
+            return (Wagon)get(currentIndex);
+        }
+
+        @Override
+        public int nextIndex() {
+            return currentIndex;
+        }
+
+        @Override
+        public int previousIndex() {
+            return currentIndex - 1;
+        }
+
+        @Override
+        public void remove() {
+            if (lastReturnedIndex == -1) {
+                throw new IllegalStateException("No element to remove");
+            }
+            WagonArrayList.this.remove(lastReturnedIndex);
+            currentIndex = lastReturnedIndex;
+            lastReturnedIndex = -1;
+        }
+
+        @Override
+        public void set(Wagon wagon) {
+            if (lastReturnedIndex == -1) {
+                throw new IllegalStateException("No element to set");
+            }
+            WagonArrayList.this.set(lastReturnedIndex, wagon);
+        }
+
+        @Override
+        public void add(Wagon wagon) {
+            WagonArrayList.this.add(currentIndex++, wagon);
+            lastReturnedIndex = -1;
+        }
     }
 
     @Override
     public List subList(int fromIndex, int toIndex) {
-        return null;
+        List subList = new ArrayList<>();
+        if(size()>toIndex){
+            for(int i =fromIndex; i<=toIndex; i++){
+                subList.add(wagons[i]);
+            }
+        }
+        return subList;
     }
 
     @Override
     public boolean retainAll(Collection c) {
-        return false;
+        List<Wagon> copyList = new ArrayList<>(List.of(wagons));
+
+        // Iterate over the list and remove elements not present in the specified collection
+        Iterator<Wagon> iterator = copyList.iterator();
+        while (iterator.hasNext()) {
+            Wagon wagon = iterator.next();
+            if (!c.contains(wagon)) {
+                iterator.remove();
+            }
+        }
+
+        // Update the original list with the retained elements
+        boolean modified = retainAll(copyList);
+
+        return modified;
     }
 
     @Override
     public boolean removeAll(Collection c) {
-        return false;
+        List<Object> elementsToRemove = new ArrayList<>(c);
+
+        for (Object o : elementsToRemove) {
+            if (contains(o)) {
+                remove(o);
+            }
+            else{
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override
     public boolean containsAll(Collection c) {
-        return false;
+        //boolean flag = true;
+        for (Object o : c) {
+            if (contains(o)) {
+                continue;
+            }
+            else{
+                //flag = false;
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
     public Object[] toArray(Object[] a) {
-        return new Object[0];
+        return Arrays.copyOf(a, a.length);
     }
 }
